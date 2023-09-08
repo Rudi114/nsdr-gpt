@@ -36,8 +36,15 @@ def generate_audio(text):
     text_with_params = build_script_with_params(text)
     current_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
     audio_file_name = f"nsdr_{current_timestamp}.mp3"
+    audio_folder = "audio_files"
+
+    # Create the audio_files folder if it doesn't exist
+    if not os.path.exists(audio_folder):
+        os.makedirs(audio_folder)
+
+    audio_file_path = os.path.join(audio_folder, audio_file_name)
     speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
-    audio_config = speechsdk.audio.AudioOutputConfig(filename=audio_file_name)
+    audio_config = speechsdk.audio.AudioOutputConfig(filename=audio_file_path)
 
     speech_config.speech_synthesis_output_format = "Audio48Khz192KBitRateMonoMp3"
     
@@ -55,7 +62,7 @@ def generate_audio(text):
                 print("Error details: {}".format(cancellation_details.error_details))
                 print("Did you set the speech resource key and region values?")
 
-    return audio_file_name
+    return audio_file_path
 
 def build_script_with_params(script):
     # Good options:
