@@ -37,3 +37,4 @@ typing_extensions==4.7.1
 urllib3==2.0.4
 Werkzeug==2.3.7
 yarl==1.9.2
+webvtt-py

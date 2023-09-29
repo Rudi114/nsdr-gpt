@@ -162,3 +162,5 @@ cython_debug/
 
 audio_files/
 nsdr/__pycache__/
+
+.DS_Store
