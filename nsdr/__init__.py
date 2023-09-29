@@ -1,13 +1,8 @@
 from chat import get_chat, build_chat_prompt
 import os
-import argparse
 from flask import Flask, send_file
-import azure.cognitiveservices.speech as speechsdk
 import datetime
-
-speech_key = os.environ["SPEECH_KEY"]
-speech_region = os.environ["SPEECH_REGION"]
-
+import requests
 
 app = Flask(__name__)
 
@@ -20,11 +15,13 @@ def hello():
 @app.route('/generate_nsdr', methods=['POST'])
 def generate_nsdr():
     script = generate_script()
-    audio_file_path = generate_audio(script)
-    return send_file(audio_file_path, as_attachment=True, mimetype='audio/mp3', download_name='audio.mp3')
+    audio_file_path = generate_audio_with_eleven(script)
+    print(f"Audio file path: {audio_file_path}")
+    return '', 200
+    # return send_file(audio_file_path, as_attachment=True, mimetype='audio/mp3', download_name='audio.mp3')
 
 def generate_script():
-    prompt = "Generate a 5 min NSDR (non sleep deep relaxation) script"
+    prompt = "Generate an NSDR (non sleep deep relaxation) script"
     prompt_with_params = build_chat_prompt(prompt)
     chat = get_chat()
     results = chat(prompt_with_params)
@@ -32,8 +29,7 @@ def generate_script():
 
     return script
 
-def generate_audio(text):
-    text_with_params = build_script_with_params(text)
+def get_audio_file_path():
     current_timestamp = datetime.datetime.now().strftime("%Y-%m-%d-%H:%M")
     audio_file_name = f"nsdr_{current_timestamp}.mp3"
     audio_folder = "audio_files"
@@ -43,28 +39,35 @@ def generate_audio(text):
         os.makedirs(audio_folder)
 
     audio_file_path = os.path.join(audio_folder, audio_file_name)
-    speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
-    audio_config = speechsdk.audio.AudioOutputConfig(filename=audio_file_path)
-
-    speech_config.speech_synthesis_output_format = "Audio48Khz192KBitRateMonoMp3"
-    
-    speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
-
-    speech_synthesis_result = speech_synthesizer.speak_ssml_async(ssml=text_with_params).get()
-
-    if speech_synthesis_result.reason == speechsdk.ResultReason.SynthesizingAudioCompleted:
-        print("Speech synthesized for text [{}]".format(text))
-    elif speech_synthesis_result.reason == speechsdk.ResultReason.Canceled:
-        cancellation_details = speech_synthesis_result.cancellation_details
-        print("Speech synthesis canceled: {}".format(cancellation_details.reason))
-        if cancellation_details.reason == speechsdk.CancellationReason.Error:
-            if cancellation_details.error_details:
-                print("Error details: {}".format(cancellation_details.error_details))
-                print("Did you set the speech resource key and region values?")
-
     return audio_file_path
 
-def build_script_with_params(script):
+def generate_audio_with_eleven(text):
+    audio_file_path = get_audio_file_path()
+
+    CHUNK_SIZE = 1024
+    url = "https://api.elevenlabs.io/v1/text-to-speech/LcfcDJNUP1GQjkzn1xUU" # Voice ID for Emily
+
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": os.environ["ELEVEN_LABS_API_KEY"]
+    }
+
+    data = {
+        "text": text,
+        "model_id": "eleven_monolingual_v1",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.5
+        }
+    }
+
+    response = requests.post(url, json=data, headers=headers)
+    with open(audio_file_path, 'wb') as f:
+        for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+            if chunk:
+                f.write(chunk)
+    return audio_file_path
     # Good options:
     # 'en-US-AshleyNeural'
     # "en-US-SaraNeural"
@@ -81,25 +84,3 @@ def build_script_with_params(script):
             </voice>
         </speak>
     """
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate NSDR script and download audio file')
-    parser.add_argument('--download', action='store_true', help='Download the audio file')
-
-    args = parser.parse_args()
-
-    if args.download:
-        with app.test_client() as client:
-            response = client.post('/generate_script')
-            if response.status_code == 200:
-                with open('audio.wav', 'wb') as f:
-                    f.write(response.data)
-                print('Audio file downloaded successfully.')
-            else:
-                print('Error occurred while generating the script.')
-    else:
-        # Save the audio file without playing it
-        audio_file_path = generate_audio("Generate a 5 min NSDR (non sleep deep relaxation) script")
-        print(f'Audio file saved at {audio_file_path}')
-
-
