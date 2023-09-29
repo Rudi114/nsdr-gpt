@@ -164,3 +164,4 @@ audio_files/
 nsdr/__pycache__/
 
 .DS_Store
+__pycache__/

@@ -31,9 +31,8 @@ pip freeze > requirements.txt
 ## Setting Environment variables
 Reach out Zach for ENV Variables
 ```
-export SPEECH_REGION=
-export SPEECH_KEY=
 export OPENAI_API_KEY=
+export ELEVEN_LABS_API_KEY=
 ```
 
 ## Running
@@ -44,5 +43,5 @@ flask --app nsdr run --debug
 
 ## Using the endpoint
 ```
-curl -X POST -H "Content-Type: application/json" -d "download=true" http://127.0.0.1:5000/generate_nsdr
+curl -X POST -H "Content-Type: application/json" http://127.0.0.1:5000/generate_nsdr
 ```
